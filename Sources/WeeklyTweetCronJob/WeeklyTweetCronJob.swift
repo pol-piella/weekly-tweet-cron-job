@@ -49,7 +49,6 @@ public struct WeeklyTweetCronJob {
                 .prefix(3)
 
             let tweet = """
-            ⚠️ Test Tweet
             Happy Friday everyone! 👋
 
             Hope you've all had a great week. Here's a look back at the week's most read articles in my blog:
