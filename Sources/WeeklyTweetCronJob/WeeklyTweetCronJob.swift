@@ -47,19 +47,31 @@ public struct WeeklyTweetCronJob {
             }
                 .sorted(by: { lhs, rhs in lhs.uniques > rhs.uniques })
                 .prefix(3)
+            
+            let topArticlesList = uniquedPageViews.enumerated().map { index, pageView in
+                let emoji = [
+                    UnicodeScalar(0x0031 + index),
+                    UnicodeScalar(UInt32(0xfe0f)),
+                    UnicodeScalar(UInt32(0x20E3))
+                ]
+                .compactMap { $0 }
+                .map { String($0) }
+                .joined()
+                
+                return "\(emoji) polpiella.dev/\(pageView.pathname)"
+            }
+            .joined(separator: "\n")
 
             let tweet = """
             Happy Friday everyone! 👋
 
             Hope you've all had a great week. Here's a look back at the week's most read articles in my blog:
 
-            1️⃣ polpiella.dev/\(uniquedPageViews[0].pathname)
-            2️⃣ polpiella.dev/\(uniquedPageViews[1].pathname)
-            3️⃣ polpiella.dev/\(uniquedPageViews[2].pathname)
+            \(topArticlesList)
 
             #iosdev #swiftlang
             """
-
+            
             let url = URL(string: "https://api.twitter.com/2/tweets")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
