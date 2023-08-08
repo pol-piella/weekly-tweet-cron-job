@@ -20,6 +20,5 @@ functions:
     memorySize: 256
     description: "[${sls:stage}] Tweet"
     events:
-      - httpApi:
-          path: /tweet
-          method: get
+      - eventBridge:
+          schedule: cron(0 12 ? * FRI *)

@@ -18,14 +18,14 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
         self.dateFormatter = formatter
     }
 
-    public func handle(_ event: APIGatewayV2Request, context: LambdaContext) async throws -> APIGatewayResponse {
+    public func handle(_ event: CloudwatchScheduledEvent, context: LambdaContext) async throws {
         guard let fathomEntity = ProcessInfo.processInfo.environment["FATHOM_ENTITY_ID"],
               let fathomToken = ProcessInfo.processInfo.environment["FATHOM_TOKEN"],
               let twitterAPIKey = ProcessInfo.processInfo.environment["TWITTER_API_KEY"],
               let twitterAPISecret = ProcessInfo.processInfo.environment["TWITTER_API_SECRET"],
               let twitterAPIToken = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN"],
               let twitterAPITokenSecret = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN_SECRET"] else {
-            return .init(statusCode: .internalServerError, body: "Missing environment variables")
+            return
         }
 
         let currentDate = Date()
@@ -50,34 +50,33 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
         var request = URLRequest(url: components.url!)
         request.setValue("Bearer \(fathomToken)", forHTTPHeaderField: "Authorization")
 
-        do {
-            let data = try await networking.data(for: request)
-            let pageViews = try! JSONDecoder().decode([PageView].self, from: data)
-            let uniquedPageViews = pageViews.reduce(into: [PageView]()) { partialResult, pageView in
-                if let index = partialResult.firstIndex(where: { $0.pathname == pageView.pathname }) {
-                    partialResult[index].uniques += pageView.uniques
-                } else {
-                    partialResult.append(pageView)
-                }
+        let data = try await networking.data(for: request)
+        let pageViews = try! JSONDecoder().decode([PageView].self, from: data)
+        let uniquedPageViews = pageViews.reduce(into: [PageView]()) { partialResult, pageView in
+            if let index = partialResult.firstIndex(where: { $0.pathname == pageView.pathname }) {
+                partialResult[index].uniques += pageView.uniques
+            } else {
+                partialResult.append(pageView)
             }
-                .sorted(by: { lhs, rhs in lhs.uniques > rhs.uniques })
-                .prefix(3)
+        }
+            .sorted(by: { lhs, rhs in lhs.uniques > rhs.uniques })
+            .prefix(3)
 
-            let topArticlesList = uniquedPageViews.enumerated().map { index, pageView in
-                let emoji = [
-                    UnicodeScalar(0x0031 + index),
-                    UnicodeScalar(UInt32(0xfe0f)),
-                    UnicodeScalar(UInt32(0x20E3))
-                ]
-                    .compactMap { $0 }
-                    .map { String($0) }
-                    .joined()
+        let topArticlesList = uniquedPageViews.enumerated().map { index, pageView in
+            let emoji = [
+                UnicodeScalar(0x0031 + index),
+                UnicodeScalar(UInt32(0xfe0f)),
+                UnicodeScalar(UInt32(0x20E3))
+            ]
+                .compactMap { $0 }
+                .map { String($0) }
+                .joined()
 
-                return "\(emoji) polpiella.dev/\(pageView.pathname)"
-            }
-                .joined(separator: "\n")
+            return "\(emoji) polpiella.dev/\(pageView.pathname)"
+        }
+            .joined(separator: "\n")
 
-            let tweet = """
+        let tweet = """
             Happy Friday everyone! 👋
 
             Hope you've all had a great week. Here's a look back at the week's most read articles in my blog:
@@ -87,19 +86,14 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
             #iosdev #swiftlang
             """
 
-            let url = URL(string: "https://api.twitter.com/2/tweets")!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.httpBody = try JSONEncoder().encode(Tweet(text: tweet))
+        let url = URL(string: "https://api.twitter.com/2/tweets")!
+        var tweetRequest = URLRequest(url: url)
+        tweetRequest.httpMethod = "POST"
+        tweetRequest.httpBody = try JSONEncoder().encode(Tweet(text: tweet))
 
-            // Add oAuth1 key-value pairs to `URLRequest` headers
-            let oAuth1 = OAuth1(key: twitterAPIKey, secret: twitterAPISecret, token: twitterAPIToken, tokenSecret: twitterAPITokenSecret)
-            let adaptedRequest = try oAuth1.adaptRequest(request)
-            _ = try await networking.data(for: adaptedRequest)
-
-            return .init(statusCode: .ok)
-        } catch {
-            return .init(statusCode: .internalServerError, body: "Something went wrong making the request: \(error.localizedDescription)")
-        }
+        // Add oAuth1 key-value pairs to `URLRequest` headers
+        let oAuth1 = OAuth1(key: twitterAPIKey, secret: twitterAPISecret, token: twitterAPIToken, tokenSecret: twitterAPITokenSecret)
+        let adaptedRequest = try oAuth1.adaptRequest(tweetRequest)
+        _ = try await networking.data(for: adaptedRequest)
     }
 }
