@@ -1,21 +1,26 @@
 import Foundation
+import AWSLambdaEvents
+import AWSLambdaRuntime
 
 @main
-public struct WeeklyTweetCronJob {
-    public static func main() async {
+public struct WeeklyTweetCronJob: SimpleLambdaHandler {
+    public init() {
+
+    }
+
+    public func handle(_ event: APIGatewayV2Request, context: LambdaContext) async throws -> APIGatewayResponse {
         guard let fathomEntity = ProcessInfo.processInfo.environment["FATHOM_ENTITY_ID"],
               let fathomToken = ProcessInfo.processInfo.environment["FATHOM_TOKEN"],
               let twitterAPIKey = ProcessInfo.processInfo.environment["TWITTER_API_KEY"],
               let twitterAPISecret = ProcessInfo.processInfo.environment["TWITTER_API_SECRET"],
               let twitterAPIToken = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN"],
               let twitterAPITokenSecret = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN_SECRET"] else {
-            print("Missing environment variables...")
-            exit(1)
+            return .init(statusCode: .internalServerError, body: "Missing environment variables")
         }
-        
+
         let currentDate = Date()
         let aWeekAgoDate = Calendar(identifier: .iso8601).date(byAdding: .day, value: -7, to: currentDate)!
-        
+
         // Build a URL
         var components = URLComponents()
         components.scheme = "https"
@@ -47,20 +52,20 @@ public struct WeeklyTweetCronJob {
             }
                 .sorted(by: { lhs, rhs in lhs.uniques > rhs.uniques })
                 .prefix(3)
-            
+
             let topArticlesList = uniquedPageViews.enumerated().map { index, pageView in
                 let emoji = [
                     UnicodeScalar(0x0031 + index),
                     UnicodeScalar(UInt32(0xfe0f)),
                     UnicodeScalar(UInt32(0x20E3))
                 ]
-                .compactMap { $0 }
-                .map { String($0) }
-                .joined()
-                
+                    .compactMap { $0 }
+                    .map { String($0) }
+                    .joined()
+
                 return "\(emoji) polpiella.dev/\(pageView.pathname)"
             }
-            .joined(separator: "\n")
+                .joined(separator: "\n")
 
             let tweet = """
             Happy Friday everyone! 👋
@@ -71,7 +76,7 @@ public struct WeeklyTweetCronJob {
 
             #iosdev #swiftlang
             """
-            
+
             let url = URL(string: "https://api.twitter.com/2/tweets")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
@@ -81,9 +86,10 @@ public struct WeeklyTweetCronJob {
             let oAuth1 = OAuth1(key: twitterAPIKey, secret: twitterAPISecret, token: twitterAPIToken, tokenSecret: twitterAPITokenSecret)
             let adaptedRequest = try oAuth1.adaptRequest(request)
             _ = try await URLSession.shared.data(for: adaptedRequest)
+
+            return .init(statusCode: .ok)
         } catch {
-            print("Something went wrong making the request: \(error.localizedDescription)")
-            exit(1)
+            return .init(statusCode: .internalServerError, body: "Something went wrong making the request: \(error.localizedDescription)")
         }
     }
 }
