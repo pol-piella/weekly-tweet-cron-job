@@ -2,7 +2,7 @@
 import FoundationNetworking
 #endif
 import Foundation
-import CryptoKit
+import Crypto
 
 public enum OAuthSignatureMethod: String {
     case HMAC_SHA1 = "HMAC-SHA1"

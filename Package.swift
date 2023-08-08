@@ -7,14 +7,16 @@ let package = Package(
     platforms: [.macOS(.v12)],
     dependencies: [
         .package(url: "https://github.com/swift-server/swift-aws-lambda-runtime.git", from: "1.0.0-alpha.1"),
-        .package(url: "https://github.com/swift-server/swift-aws-lambda-events.git", exact: "0.1.0")
+        .package(url: "https://github.com/swift-server/swift-aws-lambda-events.git", exact: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "3.0.0")
     ],
     targets: [
         .executableTarget(
             name: "WeeklyTweetCronJob",
             dependencies: [
                 .product(name: "AWSLambdaRuntime", package: "swift-aws-lambda-runtime"),
-                .product(name: "AWSLambdaEvents", package: "swift-aws-lambda-events")
+                .product(name: "AWSLambdaEvents", package: "swift-aws-lambda-events"),
+                .product(name: "Crypto", package: "swift-crypto")
             ]
         )
     ]

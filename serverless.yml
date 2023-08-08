@@ -1,0 +1,25 @@
+service: weekly-tweet
+frameworkVersion: "3"
+configValidationMode: warn
+
+package:
+  artifact: build/Products/Product.zip
+
+provider:
+  name: aws
+  region: eu-west-1
+  httpApi:
+    payload: "2.0"
+    cors: true
+  runtime: provided.al2
+  architecture: arm64
+
+functions:
+  tweet:
+    handler: tweet
+    memorySize: 256
+    description: "[${sls:stage}] Tweet"
+    events:
+      - httpApi:
+          path: /tweet
+          method: get
