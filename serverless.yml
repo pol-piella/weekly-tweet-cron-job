@@ -3,7 +3,7 @@ frameworkVersion: "3"
 configValidationMode: warn
 
 package:
-  artifact: build/Products/Product.zip
+  artifact: .build/plugins/AWSLambdaPackager/outputs/AWSLambdaPackager/WeeklyTweetCronJob/WeeklyTweetCronJob.zip
 
 provider:
   name: aws
@@ -11,8 +11,8 @@ provider:
   httpApi:
     payload: "2.0"
     cors: true
-  runtime: provided.al2
-  architecture: arm64
+  runtime: provided
+  architecture: x86_64
 
 functions:
   tweet:

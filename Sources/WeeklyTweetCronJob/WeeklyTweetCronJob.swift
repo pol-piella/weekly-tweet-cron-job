@@ -1,11 +1,21 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import AWSLambdaEvents
 import AWSLambdaRuntime
 
 @main
 public struct WeeklyTweetCronJob: SimpleLambdaHandler {
-    public init() {
+    private let networking: URLSessionWrapper
+    private let dateFormatter: DateFormatter
 
+    public init() {
+        self.networking = .init()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        self.dateFormatter = formatter
     }
 
     public func handle(_ event: APIGatewayV2Request, context: LambdaContext) async throws -> APIGatewayResponse {
@@ -33,15 +43,15 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
             URLQueryItem(name: "field_grouping", value: "pathname"),
             URLQueryItem(name: "sort_by", value: "uniques:desc"),
             URLQueryItem(name: "timezone", value: "Europe/London"),
-            URLQueryItem(name: "date_from", value: aWeekAgoDate.ISO8601Format()),
-            URLQueryItem(name: "date_to", value: currentDate.ISO8601Format()),
+            URLQueryItem(name: "date_from", value: dateFormatter.string(from: aWeekAgoDate)),
+            URLQueryItem(name: "date_to", value: dateFormatter.string(from: currentDate)),
             URLQueryItem(name: "filters", value: "[{\"property\":\"pathname\", \"operator\":\"is like\", \"value\":\"/*-*\"}]")
         ]
         var request = URLRequest(url: components.url!)
         request.setValue("Bearer \(fathomToken)", forHTTPHeaderField: "Authorization")
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let data = try await networking.data(for: request)
             let pageViews = try! JSONDecoder().decode([PageView].self, from: data)
             let uniquedPageViews = pageViews.reduce(into: [PageView]()) { partialResult, pageView in
                 if let index = partialResult.firstIndex(where: { $0.pathname == pageView.pathname }) {
@@ -85,7 +95,7 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
             // Add oAuth1 key-value pairs to `URLRequest` headers
             let oAuth1 = OAuth1(key: twitterAPIKey, secret: twitterAPISecret, token: twitterAPIToken, tokenSecret: twitterAPITokenSecret)
             let adaptedRequest = try oAuth1.adaptRequest(request)
-            _ = try await URLSession.shared.data(for: adaptedRequest)
+            _ = try await networking.data(for: adaptedRequest)
 
             return .init(statusCode: .ok)
         } catch {
