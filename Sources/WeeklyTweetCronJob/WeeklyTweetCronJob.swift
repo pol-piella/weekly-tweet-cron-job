@@ -25,6 +25,7 @@ public struct WeeklyTweetCronJob: SimpleLambdaHandler {
               let twitterAPISecret = ProcessInfo.processInfo.environment["TWITTER_API_SECRET"],
               let twitterAPIToken = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN"],
               let twitterAPITokenSecret = ProcessInfo.processInfo.environment["TWITTER_API_TOKEN_SECRET"] else {
+            context.logger.error("Missing environment variable...")
             return
         }
 
