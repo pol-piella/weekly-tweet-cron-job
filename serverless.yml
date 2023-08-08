@@ -19,6 +19,12 @@ functions:
     handler: tweet
     memorySize: 256
     description: "[${sls:stage}] Tweet"
+    environment:
+      FATHOM_ENTITY_ID: ${env:FATHOM_ENTITY_ID}
+      TWITTER_API_KEY: ${env:TWITTER_API_KEY}
+      TWITTER_API_SECRET: ${env:TWITTER_API_SECRET}
+      TWITTER_API_TOKEN: ${env:TWITTER_API_TOKEN}
+      TWITTER_API_TOKEN_SECRET: ${env:TWITTER_API_TOKEN_SECRET}
     events:
       - eventBridge:
           schedule: cron(0 12 ? * FRI *)
